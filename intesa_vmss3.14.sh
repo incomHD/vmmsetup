@@ -73,7 +73,7 @@ tar -xzf Python-${PYTHON_VERSION}.tgz
 
 cd Python-${PYTHON_VERSION}
 
-./configure --enable-optimizations
+./configure
 
 make -j"$(nproc)"
 
