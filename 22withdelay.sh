@@ -63,7 +63,7 @@ for i in {1..5}; do
   sleep 15
 done
 
-echo "===== INSTALL PYTHON 3.14 ====="
+echo "===== INSTALL PYTHON 3.12 ====="
 
 sudo add-apt-repository -y ppa:deadsnakes/ppa
 
@@ -71,19 +71,19 @@ sudo apt-get update
 
 for i in {1..5}; do
   sudo apt-get install -y \
-    python3.14 \
-    python3.14-venv \
-    python3.14-dev \
+    python3.12 \
+    python3.12-venv \
+    python3.12-dev \
     --fix-missing && break
 
-  echo "python3.14 install failed... retrying"
+  echo "python3.12 install failed... retrying"
   sleep 15
 done
 
 echo "===== VERIFY PYTHONS ====="
 
 /usr/bin/python3 --version
-/usr/bin/python3.14 --version
+/usr/bin/python3.12 --version
 
 echo "===== INSTALL TERRAFORM ====="
 
@@ -114,7 +114,7 @@ echo "System Python:"
 /usr/bin/python3 --version
 
 echo "Pipeline Python:"
-/usr/bin/python3.14 --version
+/usr/bin/python3.12 --version
 
 terraform version | head -1
 
