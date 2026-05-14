@@ -1,37 +1,49 @@
 #!/usr/bin/env bash
 set -euxo pipefail
 
-# -----------------------------
-# Fix apt repos and mirrors
-# -----------------------------
+# =========================================================
+# Ubuntu 22.04 VMSS bootstrap for Azure DevOps agents
+# - Keeps system Python 3.10 intact
+# - Installs Python 3.12 alongside system Python
+# - Installs Azure CLI
+# - Installs Terraform
+# =========================================================
 
-# Enable universe & multiverse repos
+PYTHON_VERSION="3.12.13"
+
+# =========================================================
+# Configure apt repositories
+# =========================================================
+
 sudo add-apt-repository universe -y || true
 sudo add-apt-repository multiverse -y || true
 
-# Use Azure mirror
+# Optional: Use Azure Ubuntu mirror
 sudo sed -i 's|http://archive.ubuntu.com/ubuntu/|http://azure.archive.ubuntu.com/ubuntu/|g' /etc/apt/sources.list
 sudo sed -i 's|http://security.ubuntu.com/ubuntu/|http://azure.archive.ubuntu.com/ubuntu/|g' /etc/apt/sources.list
 
-# Reset and update apt cache
 sudo rm -rf /var/lib/apt/lists/*
 sudo apt-get clean
+
 sudo DEBIAN_FRONTEND=noninteractive apt-get update -y
 
-# -----------------------------
-# Install common tools
-# -----------------------------
+# =========================================================
+# Install system dependencies
+# =========================================================
+
 sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
-  unzip \
-  zip \
-  gnupg \
-  gpg \
+  build-essential \
+  software-properties-common \
+  lsb-release \
   curl \
   wget \
-  lsb-release \
-  software-properties-common \
+  unzip \
+  zip \
   jq \
-  build-essential \
+  gnupg \
+  gpg \
+  xz-utils \
+  uuid-dev \
   zlib1g-dev \
   libncurses5-dev \
   libgdbm-dev \
@@ -42,16 +54,13 @@ sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
   libsqlite3-dev \
   libbz2-dev \
   liblzma-dev \
-  tk-dev \
-  uuid-dev \
-  xz-utils
+  tk-dev
 
-# -----------------------------
-# Install Python 3.14
-# -----------------------------
-function install_python314() {(
-  PYTHON_VERSION="3.14.0"
+# =========================================================
+# Install Python 3.12 from source
+# =========================================================
 
+install_python312() {
   cd /tmp
 
   wget https://www.python.org/ftp/python/${PYTHON_VERSION}/Python-${PYTHON_VERSION}.tgz
@@ -66,48 +75,66 @@ function install_python314() {(
 
   make -j"$(nproc)"
 
-  # altinstall prevents overwriting system python
+  # IMPORTANT:
+  # altinstall prevents overwriting system python3
   sudo make altinstall
 
-  # Verify install
-  /usr/local/bin/python3.14 --version
-  /usr/local/bin/pip3.14 --version
+  # Verify installation
+  /usr/local/bin/python3.12 --version
+  /usr/local/bin/pip3.12 --version
+}
 
-  # Optional symlink
-  sudo ln -sf /usr/local/bin/python3.14 /usr/bin/python3.14
-  sudo ln -sf /usr/local/bin/pip3.14 /usr/bin/pip3.14
-)}
-
-# -----------------------------
+# =========================================================
 # Install Terraform
-# -----------------------------
-function install_terraform() {(
+# =========================================================
+
+install_terraform() {
   wget -O- https://apt.releases.hashicorp.com/gpg \
     | gpg --dearmor \
-    | sudo tee /usr/share/keyrings/hashicorp-archive-keyring.gpg
+    | sudo tee /usr/share/keyrings/hashicorp-archive-keyring.gpg > /dev/null
 
   echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] \
-    https://apt.releases.hashicorp.com $(lsb_release -cs) main" \
+https://apt.releases.hashicorp.com $(lsb_release -cs) main" \
     | sudo tee /etc/apt/sources.list.d/hashicorp.list
 
   sudo DEBIAN_FRONTEND=noninteractive apt-get update -y
 
   sudo DEBIAN_FRONTEND=noninteractive apt-get install -y terraform
-)}
 
-# -----------------------------
+  terraform version
+}
+
+# =========================================================
 # Install Azure CLI
-# -----------------------------
-function install_azcli() {(
+# =========================================================
+
+install_azure_cli() {
   curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
-)}
 
-# -----------------------------
-# Execute installers
-# -----------------------------
-install_python314
-install_azcli
+  az version
+}
+
+# =========================================================
+# Install Azure DevOps extension
+# =========================================================
+
+install_azure_devops_extension() {
+  az extension add --name azure-devops --yes
+}
+
+# =========================================================
+# Execute installations
+# =========================================================
+
+install_python312
+install_azure_cli
 install_terraform
+install_azure_devops_extension
 
-# Add Azure DevOps CLI extension
-az extension add --name azure-devops
+echo "========================================="
+echo "Bootstrap completed successfully"
+echo "System Python:"
+python3 --version
+echo "Custom Python:"
+/usr/local/bin/python3.12 --version
+echo "========================================="
